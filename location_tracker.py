@@ -2,20 +2,23 @@ from flask import Flask, request
 import threading
 import logging
 import time
+import math
 
-# --- FLASK WEB SERVER (The Catching Mitt) ---
 app = Flask(__name__)
 log = logging.getLogger('werkzeug')
-log.setLevel(logging.ERROR) # Mute server logs so they don't flood your terminal
+log.setLevel(logging.ERROR)
 
-# Global variables to pass data to the Taichi loop
-shared_x = 400.0
-shared_y = 300.0
-shared_status = "Waiting for Phone..."
+# --- SHARED MEMORY ---
+shared_x = 960.0
+shared_y = 540.0
+current_yaw = 0.0
+last_step_time = 0
+prev_magnitude = 9.8 # <--- NEW: Stores the last reading to calculate the difference
+shared_status = "Waiting for IMU..."
 
 @app.route('/data', methods=['POST'])
 def handle_data():
-    global shared_x, shared_y, shared_status
+    global shared_x, shared_y, current_yaw, last_step_time, shared_status
     
     try:
         data = request.json
@@ -23,40 +26,53 @@ def handle_data():
         
         for item in payloads:
             sensor_name = item.get('name', '').lower()
+            values = item.get('values', {})
             
-            # Look for the AR tracking data packet
-            if 'ar' in sensor_name or 'pose' in sensor_name:
-                values = item.get('values', {})
+            # 1. READ THE COMPASS
+            if 'orientation' in sensor_name:
+                if 'yaw' in values:
+                    current_yaw = -values['yaw'] 
+                    shared_status = "Tracking (IMU Active)"
+
+            # 2. DETECT THE STEPS (Bulletproof Absolute Threshold)
+            if 'accelerometer' in sensor_name or 'linearacceleration' in sensor_name:
+                x, y, z = values.get('x', 0), values.get('y', 0), values.get('z', 0)
                 
-                # AR systems measure in real-world meters.
-                # X is left/right. Z is forward/backward.
-                if 'x' in values and 'z' in values:
-                    scale = 80.0 # 80 pixels per meter of walking
+                # Calculate current total force
+                m = math.sqrt(x**2 + y**2 + z**2)
+                
+                # IGNORE 0s and IGNORE resting gravity (9.8).
+                # A step without gravity reads between 2.0 and 6.0
+                # A step WITH gravity reads above 11.5
+                if (2.0 < m < 6.0) or (m > 11.5):
                     
-                    shared_x = 400.0 + (values['x'] * scale)
-                    shared_y = 300.0 + (values['z'] * scale) 
-                    shared_status = "Tracking (AR Bridge)"
+                    # Cooldown: You physically cannot take 2 steps in less than 0.4 seconds
+                    if (time.time() - last_step_time) > 0.4:
+                        
+                        step_size_pixels = 30.0 # Your 1080p stride
+                        
+                        shared_x += step_size_pixels * math.cos(current_yaw)
+                        shared_y += step_size_pixels * math.sin(current_yaw)
+                        
+                        last_step_time = time.time()
+                        print(f"👣 Step! Force: {m:.2f} | Heading: {math.degrees(current_yaw):.0f}°")
                     
         return "Success", 200
     except Exception as e:
         return "Error", 500
 
-# --- THE SENSOR CLASS (Matches your existing architecture) ---
 class LocationSensor:
     def __init__(self):
-        self.x = 400.0
-        self.y = 300.0
+        self.x = 960.0
+        self.y = 540.0
         self.status = "Starting Server..."
         self.running = False
 
     def start(self):
         self.running = True
-        
-        # Start Flask server in the background (0.0.0.0 exposes it to your local network)
         server_thread = threading.Thread(target=lambda: app.run(host='0.0.0.0', port=5000, debug=False, use_reloader=False), daemon=True)
         server_thread.start()
         
-        # Start the updater
         update_thread = threading.Thread(target=self._update_loop, daemon=True)
         update_thread.start()
 

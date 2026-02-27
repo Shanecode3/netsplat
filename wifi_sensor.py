@@ -7,6 +7,7 @@ class WifiScanner:
         self.current_rssi = -100.0
         self.running = False
         self.thread = None
+        self.target_ssid = None  # We will lock onto your Wi-Fi name
 
     def start(self):
         self.running = True
@@ -20,6 +21,7 @@ class WifiScanner:
         wifi = pywifi.PyWiFi()
         
         if len(wifi.interfaces()) == 0:
+            print("❌ Error: No Wi-Fi Interface Found.")
             return
 
         iface = wifi.interfaces()[0]
@@ -27,16 +29,33 @@ class WifiScanner:
         while self.running:
             try:
                 iface.scan()
-                time.sleep(1.0)
+                # Windows needs a moment to actually complete the scan
+                time.sleep(1.5) 
                 
                 results = iface.scan_results()
-                best_signal = -100
                 
-                for network in results:
-                    if network.signal > best_signal and network.signal < 0:
-                        best_signal = network.signal
+                # --- PHASE 1: LOCK ONTO YOUR NETWORK ---
+                if self.target_ssid is None:
+                    best_initial_signal = -100
+                    for network in results:
+                        # Ignore hidden networks (empty SSID)
+                        if network.signal > best_initial_signal and network.signal < 0 and network.ssid != "":
+                            best_initial_signal = network.signal
+                            self.target_ssid = network.ssid
+                            
+                    if self.target_ssid:
+                        print(f"\n📡 Locked onto Target Network: '{self.target_ssid}'\n")
+
+                # --- PHASE 2: TRACK ONLY YOUR NETWORK ---
+                if self.target_ssid is not None:
+                    best_target_signal = -100
+                    for network in results:
+                        # Only check routers with YOUR network name (handles Mesh networks too)
+                        if network.ssid == self.target_ssid:
+                            if network.signal > best_target_signal and network.signal < 0:
+                                best_target_signal = network.signal
+                    
+                    self.current_rssi = best_target_signal
                 
-                self.current_rssi = best_signal
-                
-            except Exception:
+            except Exception as e:
                 time.sleep(1)

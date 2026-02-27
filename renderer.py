@@ -2,7 +2,7 @@ import taichi as ti
 
 ti.init(arch=ti.gpu)
 
-RES_X, RES_Y = 800, 600
+RES_X, RES_Y = 1920, 1080
 
 pixels = ti.Vector.field(3, dtype=ti.f32, shape=(RES_X, RES_Y))
 
