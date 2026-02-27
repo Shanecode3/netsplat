@@ -7,7 +7,6 @@ A localized instance of **Llama 3** acts as an embedded autonomous agent, calcul
 ![Python](https://img.shields.io/badge/Python-3.13-blue)
 ![Edge AI](https://img.shields.io/badge/Edge_AI-Llama_3-purple)
 ![Compute](https://img.shields.io/badge/GPU_Compute-Taichi_CUDA-green)
-![Status](https://img.shields.io/badge/Status-Deployed-success)
 
 ![Demo](demo_screenshot.png)
 
