@@ -7,7 +7,7 @@ class WifiScanner:
         self.current_rssi = -100.0
         self.running = False
         self.thread = None
-        self.target_ssid = None  # We will lock onto your Wi-Fi name
+        self.target_ssid = None
 
     def start(self):
         self.running = True
@@ -21,7 +21,7 @@ class WifiScanner:
         wifi = pywifi.PyWiFi()
         
         if len(wifi.interfaces()) == 0:
-            print("❌ Error: No Wi-Fi Interface Found.")
+            print("Error: No Wi-Fi Interface Found.")
             return
 
         iface = wifi.interfaces()[0]
@@ -29,12 +29,11 @@ class WifiScanner:
         while self.running:
             try:
                 iface.scan()
-                # Windows needs a moment to actually complete the scan
                 time.sleep(1.5) 
                 
                 results = iface.scan_results()
                 
-                # --- PHASE 1: LOCK ONTO YOUR NETWORK ---
+                # LOCK ONTO YOUR NETWORK
                 if self.target_ssid is None:
                     best_initial_signal = -100
                     for network in results:
@@ -46,11 +45,11 @@ class WifiScanner:
                     if self.target_ssid:
                         print(f"\n📡 Locked onto Target Network: '{self.target_ssid}'\n")
 
-                # --- PHASE 2: TRACK ONLY YOUR NETWORK ---
+                # TRACK ONLY YOUR NETWORK
                 if self.target_ssid is not None:
                     best_target_signal = -100
                     for network in results:
-                        # Only check routers with YOUR network name (handles Mesh networks too)
+                        # Only check routers with your network name (can handle Mesh networks as well)
                         if network.ssid == self.target_ssid:
                             if network.signal > best_target_signal and network.signal < 0:
                                 best_target_signal = network.signal

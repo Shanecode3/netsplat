@@ -8,12 +8,12 @@ app = Flask(__name__)
 log = logging.getLogger('werkzeug')
 log.setLevel(logging.ERROR)
 
-# --- SHARED MEMORY ---
+# SHARED MEMORY beween IMU Server and Taichi Renderer
 shared_x = 960.0
 shared_y = 540.0
 current_yaw = 0.0
 last_step_time = 0
-prev_magnitude = 9.8 # <--- NEW: Stores the last reading to calculate the difference
+prev_magnitude = 9.8 # Stores the last reading to calculate the difference to negate gravity detection when IMU device is stationary
 shared_status = "Waiting for IMU..."
 
 @app.route('/data', methods=['POST'])
@@ -28,13 +28,13 @@ def handle_data():
             sensor_name = item.get('name', '').lower()
             values = item.get('values', {})
             
-            # 1. READ THE COMPASS
+            # READ THE COMPASS
             if 'orientation' in sensor_name:
                 if 'yaw' in values:
                     current_yaw = -values['yaw'] 
                     shared_status = "Tracking (IMU Active)"
 
-            # 2. DETECT THE STEPS (Bulletproof Absolute Threshold)
+            # DETECT THE STEPS
             if 'accelerometer' in sensor_name or 'linearacceleration' in sensor_name:
                 x, y, z = values.get('x', 0), values.get('y', 0), values.get('z', 0)
                 
@@ -46,10 +46,10 @@ def handle_data():
                 # A step WITH gravity reads above 11.5
                 if (2.0 < m < 6.0) or (m > 11.5):
                     
-                    # Cooldown: You physically cannot take 2 steps in less than 0.4 seconds
+                    # Cooldown because a person cannot take 2 steps in less than 0.4 seconds
                     if (time.time() - last_step_time) > 0.4:
                         
-                        step_size_pixels = 30.0 # Your 1080p stride
+                        step_size_pixels = 30.0 # This is an estimated step size in pixels. Adjust based on your room scale and Taichi resolution.
                         
                         shared_x += step_size_pixels * math.cos(current_yaw)
                         shared_y += step_size_pixels * math.sin(current_yaw)

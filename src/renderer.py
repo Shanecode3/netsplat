@@ -9,7 +9,7 @@ pixels = ti.Vector.field(3, dtype=ti.f32, shape=(RES_X, RES_Y))
 max_points = 10000
 path_history = ti.Vector.field(3, dtype=ti.f32, shape=max_points)
 point_counter = ti.field(dtype=ti.i32, shape=())
-# --- ROUTER MEMORY ---
+# ROUTER MEMORY FOR USER INPUT
 router_1 = ti.Vector.field(2, dtype=ti.f32, shape=())
 router_2 = ti.Vector.field(2, dtype=ti.f32, shape=())
 router_1_active = ti.field(dtype=ti.i32, shape=())
@@ -19,7 +19,7 @@ optimal_1 = ti.Vector.field(2, dtype=ti.f32, shape=())
 optimal_2 = ti.Vector.field(2, dtype=ti.f32, shape=())
 optimal_active = ti.field(dtype=ti.i32, shape=())
 
-# A toggle to show the raw dots or the optimized splat surface
+# A toggle to show the raw dots or the optimized splat surface (will be set to 1 when 'O' is pressed)
 show_optimized = ti.field(dtype=ti.i32, shape=())
 
 @ti.kernel
@@ -28,7 +28,7 @@ def paint_raw_dots(count: ti.i32, robot_x: ti.f32, robot_y: ti.f32):
     for i, j in pixels:
         pixels[i, j] = ti.Vector([0.05, 0.05, 0.05])
 
-    # Draw raw dots
+    # Draw dots
     for k in range(count):
         cx = int(path_history[k].x)
         cy = int(path_history[k].y)
@@ -55,12 +55,12 @@ def paint_raw_dots(count: ti.i32, robot_x: ti.f32, robot_y: ti.f32):
 
 @ti.kernel
 def optimize_splat_surface(count: ti.i32):
-    # This runs simultaneously for all 2,073,600 pixels on your GPU
+    # This runs simultaneously for all 2,073,600 pixels on GPU
     for i, j in pixels:
         total_weight = 0.0
         weighted_sig = 0.0
         
-        # Look at every recorded data point
+        # Looks at every recorded data point
         for k in range(count):
             px = path_history[k].x
             py = path_history[k].y
@@ -76,7 +76,7 @@ def optimize_splat_surface(count: ti.i32):
                 weighted_sig += sig * weight
                 total_weight += weight
                 
-        # If the pixel is near our data, color it in
+        # Logic is that if the pixel is near data, color it in
         if total_weight > 0.0:
             final_sig = weighted_sig / total_weight
             
@@ -101,7 +101,7 @@ def draw_routers():
                 if 0 <= rx+dx < RES_X and 0 <= ry+dy < RES_Y:
                     pixels[rx+dx, ry+dy] = ti.Vector([0.0, 1.0, 1.0])
                     
-    # Draw Router 2 (Blue Square)
+    # Draw Router 2 (Blue Square) for dual-router setups or Mesh networks
     if router_2_active[None] == 1:
         rx = int(router_2[None].x)
         ry = int(router_2[None].y)
@@ -110,7 +110,7 @@ def draw_routers():
                 if 0 <= rx+dx < RES_X and 0 <= ry+dy < RES_Y:
                     pixels[rx+dx, ry+dy] = ti.Vector([0.0, 0.5, 1.0])
 
-    # Draw AI Suggestion (Purple Star)
+    # Draw AI Suggestion (Purple Star) for optimal placement of a new router
     if optimal_active[None] == 1:
         ox = int(optimal_1[None].x)
         oy = int(optimal_1[None].y)
@@ -124,7 +124,7 @@ def draw_routers():
 class MapRenderer:
     def __init__(self):
         self.gui = ti.GUI("Signal-Splat Optimizer", res=(RES_X, RES_Y), fullscreen=False)
-        show_optimized[None] = 0 # Default to raw dots
+        show_optimized[None] = 0
         self.router_1 = router_1
         self.router_2 = router_2
         self.router_1_active = router_1_active
@@ -143,16 +143,14 @@ class MapRenderer:
             point_counter[None] += 1
             
     def toggle_optimization(self):
-        # Flips between 0 (Raw) and 1 (Optimized)
         show_optimized[None] = 1 - show_optimized[None]
         if show_optimized[None] == 1:
-            print("🚀 GPU Optimization Phase Initialized...")
+            print("GPU Optimization Initialized...")
             
     def render(self, robot_x, robot_y):
         if show_optimized[None] == 0:
             paint_raw_dots(point_counter[None], robot_x, robot_y)
         else:
-            # We don't draw the robot in optimized mode, just the clean map
             optimize_splat_surface(point_counter[None])
             
         self.gui.set_image(pixels)

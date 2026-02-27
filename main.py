@@ -30,8 +30,7 @@ def main():
     while renderer.is_active():
         gui = renderer.get_input()
         
-        # Keep window responsive
-        # --- INPUT HANDLING ---
+        # INPUT HANDLING
         for e in gui.get_events(gui.PRESS):
             if e.key == 'o' or e.key == 'O':
                 renderer.toggle_optimization()
@@ -39,16 +38,16 @@ def main():
             elif e.key == '1':
                 renderer.router_1[None] = [robot_x, robot_y]
                 renderer.router_1_active[None] = 1
-                print(f"📍 Router 1 Marked at {int(robot_x)}, {int(robot_y)}")
+                print(f"Router 1 Marked at {int(robot_x)}, {int(robot_y)}")
                 
             elif e.key == '2':
                 renderer.router_2[None] = [robot_x, robot_y]
                 renderer.router_2_active[None] = 1
-                print(f"📍 Router 2 Marked at {int(robot_x)}, {int(robot_y)}")
+                print(f"Router 2 Marked at {int(robot_x)}, {int(robot_y)}")
                 
             # Taichi registers 'Enter' as gui.RETURN
             elif e.key == gui.RETURN or e.key == 'Return':
-                print("🚀 Triggering AI Placement Optimization...")
+                print("Triggering AI Placement Optimization...")
                 
                 history_data = []
                 for i in range(renderer.point_counter[None]):
@@ -64,12 +63,12 @@ def main():
                 # Run Llama 3 Analysis
                 optimal_coords = doctor.calculate_optimal_placement(history_data, r1, r2)
                 
-                # Drop the Purple Star
+                # Drop the Purple Star on the Map to show the optimal location for a new router
                 if optimal_coords:
                     renderer.optimal_1[None] = [optimal_coords[0], optimal_coords[1]]
                     renderer.optimal_active[None] = 1
 
-        # Pull real-world position from the IMU math
+        # Pull real-world position from the IMU sensor's shared memory
         robot_x = location.x
         robot_y = location.y
 
@@ -94,7 +93,6 @@ def main():
         
         renderer.show()
 
-    # Cleanup
     sensor.stop()
     location.stop()
     doctor.stop()
