@@ -1,8 +1,8 @@
 import time
-from wifi_sensor import WifiScanner
-from renderer import MapRenderer
-from agent_brain import NetworkDoctor
-from location_tracker import LocationSensor
+from src.wifi_sensor import WifiScanner
+from src.renderer import MapRenderer
+from src.agent_brain import NetworkDoctor
+from src.location_tracker import LocationSensor
 
 def main():
     print("Initializing Wi-Fi Sensor...")
@@ -31,8 +31,43 @@ def main():
         gui = renderer.get_input()
         
         # Keep window responsive
-        while gui.get_event():
-            pass
+        # --- INPUT HANDLING ---
+        for e in gui.get_events(gui.PRESS):
+            if e.key == 'o' or e.key == 'O':
+                renderer.toggle_optimization()
+                
+            elif e.key == '1':
+                renderer.router_1[None] = [robot_x, robot_y]
+                renderer.router_1_active[None] = 1
+                print(f"📍 Router 1 Marked at {int(robot_x)}, {int(robot_y)}")
+                
+            elif e.key == '2':
+                renderer.router_2[None] = [robot_x, robot_y]
+                renderer.router_2_active[None] = 1
+                print(f"📍 Router 2 Marked at {int(robot_x)}, {int(robot_y)}")
+                
+            # Taichi registers 'Enter' as gui.RETURN
+            elif e.key == gui.RETURN or e.key == 'Return':
+                print("🚀 Triggering AI Placement Optimization...")
+                
+                history_data = []
+                for i in range(renderer.point_counter[None]):
+                    history_data.append({
+                        'x': renderer.path_history[i].x,
+                        'y': renderer.path_history[i].y,
+                        'signal': renderer.path_history[i].z
+                    })
+                
+                r1 = (int(renderer.router_1[None].x), int(renderer.router_1[None].y)) if renderer.router_1_active[None] else "Not Set"
+                r2 = (int(renderer.router_2[None].x), int(renderer.router_2[None].y)) if renderer.router_2_active[None] else "Not Set"
+                
+                # Run Llama 3 Analysis
+                optimal_coords = doctor.calculate_optimal_placement(history_data, r1, r2)
+                
+                # Drop the Purple Star
+                if optimal_coords:
+                    renderer.optimal_1[None] = [optimal_coords[0], optimal_coords[1]]
+                    renderer.optimal_active[None] = 1
 
         # Pull real-world position from the IMU math
         robot_x = location.x
