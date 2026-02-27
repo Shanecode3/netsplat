@@ -39,7 +39,7 @@ def paint_heatmap(count: ti.i32, robot_x: ti.f32, robot_y: ti.f32):
 
 class MapRenderer:
     def __init__(self):
-        self.gui = ti.GUI("Signal Mapper: Manual Mode", res=(RES_X, RES_Y))
+        self.gui = ti.GUI("Signal Mapper:", res=(RES_X, RES_Y))
         
     def add_point(self, x, y, signal):
         idx = point_counter[None]
