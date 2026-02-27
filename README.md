@@ -1,6 +1,6 @@
 # 📡 NETSPLAT: Edge AI Network Diagnostics & Spatial Mapping
 
-**Signal-Splat** is an autonomous, Edge-AI-driven RF diagnostic system. It leverages smartphone IMU sensor fusion (Pedestrian Dead Reckoning) to physically map indoor environments, captures raw 802.11 Wi-Fi telemetry, and renders 60FPS high-fidelity heatmaps via GPU parallelization. 
+**NETSPLAT** is an autonomous, Edge-AI-driven RF diagnostic system. It leverages smartphone IMU sensor fusion (Pedestrian Dead Reckoning) to physically map indoor environments, captures raw 802.11 Wi-Fi telemetry, and renders 60FPS high-fidelity heatmaps via GPU parallelization. 
 
 A localized instance of **Llama 3** acts as an embedded autonomous agent, calculating dead-zone clusters and outputting enterprise-grade hardware relocation strategies in real time.
 
